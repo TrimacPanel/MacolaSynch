@@ -32,8 +32,6 @@ namespace MacolaSynch
 
         private string m_sLogPath;
 
-        private int m_iProdReportLag = 2;
-
         private List<string> alerts = new List<string>();
 
         private List<AlertItem> m_lAlertItems = new List<AlertItem>();
