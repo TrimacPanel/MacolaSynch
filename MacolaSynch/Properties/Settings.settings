@@ -1,0 +1,36 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="MacolaSynch.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="accessFilePath" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">c:\MacolaSynch\DATA FILE.mdb</Value>
+    </Setting>
+    <Setting Name="emailSummaryTo" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">tcoyle@trimacpanel.com</Value>
+    </Setting>
+    <Setting Name="emailFrom" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">noreply@trimacpanel.com</Value>
+    </Setting>
+    <Setting Name="emailHostname" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">in-v3.mailjet.com</Value>
+    </Setting>
+    <Setting Name="emailUsername" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">4c1939dcabaffd79b7aee6559fcbdb9d</Value>
+    </Setting>
+    <Setting Name="emailPassword" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">bc56965912839358636c1e249521c21f</Value>
+    </Setting>
+    <Setting Name="emailPort" Type="System.Int32" Scope="Application">
+      <Value Profile="(Default)">587</Value>
+    </Setting>
+    <Setting Name="locationCode" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">TMV</Value>
+    </Setting>
+    <Setting Name="logPath" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">c:\MacolaSynch\log.txt</Value>
+    </Setting>
+    <Setting Name="macolaConnection" Type="System.String" Scope="User">
+      <Value Profile="(Default)">server=macola;database=DATA_01;user id=sa;password=trimac2k</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
