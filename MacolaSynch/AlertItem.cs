@@ -9,6 +9,7 @@ namespace MacolaSynch
     class AlertItem
     {
 
+
         private string m_sItemNo;
         private string m_sDescription;
         private bool m_bActionNeeded;
