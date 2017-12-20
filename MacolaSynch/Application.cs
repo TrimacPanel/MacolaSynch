@@ -28,7 +28,7 @@ namespace MacolaSynch
         private string m_sSmtpToAddress;
         private string m_sSmtpFromAddress;
 
-        private double m_dblDecimalVariance = 2.00;
+        private decimal m_dblDecimalVariance = 2m;
 
         private string m_sLogPath;
 
@@ -84,10 +84,11 @@ namespace MacolaSynch
         {
 
             string sql = "";
-            double q1;
-            double q2;
-            double diff;
+            decimal q1;
+            decimal q2;
+            decimal diff;
             bool bSafeToDelete;
+            string s;
 
             using (OleDbConnection cnAcc = new OleDbConnection(m_sAccessConn))
             {
@@ -115,22 +116,26 @@ namespace MacolaSynch
                     OleDbCommand cmdAcc;
                     OleDbDataReader rdrAcc;
 
+                    List<UpdateResult> updates;
+
                     // Iterate all Macola items and process accordingly
                     while (rdr.Read())
                     {
                         sSKU = rdr["item_no"].ToString().Trim();
 
+                        System.Diagnostics.Debug.WriteLine(sSKU);
+
                         // Does item exist in access?
-                        sql = "select count(*) as the_count from ItemINDEX where Item = '" + sSKU + "'";
+                        sql = "select [Item], [Desc], [Cat], [UOM], [Wt_UOM], [Wt], [User_Defined_Code], [CH_UOM], [CW_UOM], [CL_UOM], [CH], [CW], [CL] from ItemINDEX where Item = '" + sSKU + "'";
 
                         cmdAcc = new OleDbCommand(sql, cnAcc);
 
                         rdrAcc = cmdAcc.ExecuteReader();
-                        rdrAcc.Read();
-
+                        
                         // Item doesn't exist in access..
-                        if (rdrAcc.GetInt32(0) == 0)
+                        if (!rdrAcc.Read())
                         {
+
                             if (rdr["activity_cd"].ToString() == "A")
                             {
 
@@ -142,23 +147,22 @@ namespace MacolaSynch
 
                                         cmdInsert.CommandText = sql;
 
-
                                         cmdInsert.CommandText = "insert into [ItemINDEX] " +
                                                                 "([Item], [Desc], [Cat], [UOM], [Wt_UOM], [Wt], [User_Defined_Code], [CH_UOM], [CW_UOM], [CL_UOM], [CH], [CW], [CL]) values " +
                                                                 "(@ItemNo, @Description, @Category, @UOM, @WeightUOM, @Weight, @UserCode, @CHUOM, @CWUOM, @CLUOM, @CH, @CW, @CL)";
 
                                         cmdInsert.Parameters.AddRange(new OleDbParameter[]
                                         {
-                                            new OleDbParameter("@ItemNo", sqlize(sSKU)),
-                                            new OleDbParameter("@Description", sqlize(rdr["item_desc_1"].ToString().Trim())),
-                                            new OleDbParameter("@Category", sqlize(rdr["prod_cat"].ToString().Trim())),
-                                            new OleDbParameter("@UOM", sqlize(rdr["uom"].ToString())),
-                                            new OleDbParameter("@WeightUOM", sqlize(rdr["item_weight_uom"].ToString().Trim())),
+                                            new OleDbParameter("@ItemNo", sSKU),
+                                            new OleDbParameter("@Description", rdr["item_desc_1"].ToString().Trim()),
+                                            new OleDbParameter("@Category", rdr["prod_cat"].ToString().Trim()),
+                                            new OleDbParameter("@UOM", rdr["uom"].ToString()),
+                                            new OleDbParameter("@WeightUOM", rdr["item_weight_uom"].ToString().Trim()),
                                             new OleDbParameter("@Weight", Convert.ToDouble(rdr["item_weight"].ToString().Trim())),
-                                            new OleDbParameter("@UserCode", sqlize(rdr["user_def_cd"].ToString().Trim())),
-                                            new OleDbParameter("@CHUOM", sqlize(rdr["cube_height_uom"].ToString().Trim())),
-                                            new OleDbParameter("@CWUOM", sqlize(rdr["cube_width_uom"].ToString().Trim())),
-                                            new OleDbParameter("@CLUOM", sqlize(rdr["cube_length_uom"].ToString().Trim())),
+                                            new OleDbParameter("@UserCode", rdr["user_def_cd"].ToString().Trim()),
+                                            new OleDbParameter("@CHUOM", rdr["cube_height_uom"].ToString().Trim()),
+                                            new OleDbParameter("@CWUOM", rdr["cube_width_uom"].ToString().Trim()),
+                                            new OleDbParameter("@CLUOM", rdr["cube_length_uom"].ToString().Trim()),
                                             new OleDbParameter("@CH", SafeToDouble(rdr["cube_height"].ToString())),
                                             new OleDbParameter("@CW", SafeToDouble(rdr["cube_width"].ToString())),
                                             new OleDbParameter("@CL", SafeToDouble(rdr["cube_length"].ToString()))
@@ -178,7 +182,7 @@ namespace MacolaSynch
 
                                         cmdInsert.Parameters.AddRange(new OleDbParameter[]
                                         {
-                                            new OleDbParameter("@ItemNo", sqlize(sSKU)),
+                                            new OleDbParameter("@ItemNo", sSKU),
                                             new OleDbParameter("@Quantity", SafeToDouble(rdr["qty_on_hand"].ToString()))
                                         });
 
@@ -205,7 +209,7 @@ namespace MacolaSynch
                                         cmdInsert.Parameters.AddRange(new OleDbParameter[]
                                         {
                                             //new OleDbParameter("@Date", "#" + DateTime.Now.ToString("MM/dd/yyyy") + "#"),                                            
-                                            new OleDbParameter("@ItemNo", sqlize(sSKU)),
+                                            new OleDbParameter("@ItemNo", sSKU),
                                             new OleDbParameter("@Quantity", SafeToDouble(rdr["qty_on_hand"].ToString())),
                                             new OleDbParameter("@Notes", "SYNCHED FROM MACOLA")
                                         });
@@ -244,14 +248,15 @@ namespace MacolaSynch
 
                                     cmdQOH.Parameters.AddRange(new OleDbParameter[]
                                     {
-                                            new OleDbParameter("@ItemNo", sqlize(sSKU))
+                                            new OleDbParameter("@ItemNo", sSKU)
                                     });
 
                                     OleDbDataReader rdrQOH = cmdQOH.ExecuteReader();
 
                                     if (rdrQOH.Read())
                                     {
-                                        q2 = rdrQOH.GetDouble(0);
+                                        //q2 = rdrQOH.GetDecimal(0);
+                                        q2 = Convert.ToDecimal(rdrQOH.GetDouble(0));
                                         if (q2 == 0)
                                         {
                                             bSafeToDelete = true;
@@ -292,45 +297,59 @@ namespace MacolaSynch
                             }
                             else
                             {
+                                // Get a snapshot of field differences
+                                updates = GetRowUpdates(rdr, rdrAcc);
 
                                 // Item exists and is still active - refresh SKU data
-                                using (OleDbCommand cmdUpdate = cnAcc.CreateCommand())
+                                if (updates.Count > 0)
                                 {
-                                    cmdUpdate.CommandText = "update [ItemINDEX] set " +
-                                                            "[Desc] = @Description, " +
-                                                            "[Cat] = @Category, " +
-                                                            "[UOM] = @UOM, " +
-                                                            "[Wt_UOM] = @WeightUOM, " +
-                                                            "[Wt] = @Weight, " +
-                                                            "[User_Defined_Code] = @UserCode, " +
-                                                            "[CH_UOM] = @CHUOM, " +
-                                                            "[CW_UOM] = @CWUOM, " +
-                                                            "[CL_UOM] = @CLUOM, " +
-                                                            "[CH] = @CH, " +
-                                                            "[CW] = @CW, " +
-                                                            "[CL] = @CL " +
-                                                            "where [Item] = '" + sSKU + "'";
-
-                                    cmdUpdate.Parameters.AddRange(new OleDbParameter[]
+                                    using (OleDbCommand cmdUpdate = cnAcc.CreateCommand())
                                     {
-                                        new OleDbParameter("@Description", sqlize(rdr["item_desc_1"].ToString())),
-                                        new OleDbParameter("@Category", sqlize(rdr["prod_cat"].ToString())),
-                                        new OleDbParameter("@UOM", sqlize(rdr["uom"].ToString())),
-                                        new OleDbParameter("@WeightUOM", sqlize(rdr["item_weight_uom"].ToString())),
-                                        new OleDbParameter("@Weight", Convert.ToDouble(rdr["item_weight"].ToString())),
-                                        new OleDbParameter("@UserCode", sqlize(rdr["user_def_cd"].ToString())),
-                                        new OleDbParameter("@CHUOM", sqlize(rdr["cube_height_uom"].ToString())),
-                                        new OleDbParameter("@CWUOM", sqlize(rdr["cube_width_uom"].ToString())),
-                                        new OleDbParameter("@CLUOM", sqlize(rdr["cube_length_uom"].ToString())),
+                                        cmdUpdate.CommandText = "update [ItemINDEX] set " +
+                                                                "[Desc] = @Description, " +
+                                                                "[Cat] = @Category, " +
+                                                                "[UOM] = @UOM, " +
+                                                                "[Wt_UOM] = @WeightUOM, " +
+                                                                "[Wt] = @Weight, " +
+                                                                "[User_Defined_Code] = @UserCode, " +
+                                                                "[CH_UOM] = @CHUOM, " +
+                                                                "[CW_UOM] = @CWUOM, " +
+                                                                "[CL_UOM] = @CLUOM, " +
+                                                                "[CH] = @CH, " +
+                                                                "[CW] = @CW, " +
+                                                                "[CL] = @CL " +
+                                                                "where [Item] = '" + sSKU + "'";
+
+                                        s = rdr["item_desc_1"].ToString().Trim();
+
+                                        cmdUpdate.Parameters.AddRange(new OleDbParameter[]
+                                        {
+                                        new OleDbParameter("@Description", s),
+                                        new OleDbParameter("@Category", rdr["prod_cat"].ToString()),
+                                        new OleDbParameter("@UOM", rdr["uom"].ToString()),
+                                        new OleDbParameter("@WeightUOM", rdr["item_weight_uom"].ToString()),
+                                        new OleDbParameter("@Weight", SafeToDouble(rdr["item_weight"].ToString())),
+                                        new OleDbParameter("@UserCode", rdr["user_def_cd"].ToString()),
+                                        new OleDbParameter("@CHUOM", rdr["cube_height_uom"].ToString()),
+                                        new OleDbParameter("@CWUOM", rdr["cube_width_uom"].ToString()),
+                                        new OleDbParameter("@CLUOM", rdr["cube_length_uom"].ToString()),
                                         new OleDbParameter("@CH", SafeToDouble(rdr["cube_height"].ToString())),
                                         new OleDbParameter("@CW", SafeToDouble(rdr["cube_width"].ToString())),
                                         new OleDbParameter("@CL", SafeToDouble(rdr["cube_length"].ToString()))
-                                    });
+                                        });                                        
+    
+                                        cmdUpdate.ExecuteNonQuery();
 
-                                    cmdUpdate.ExecuteNonQuery();
+                                        // Build summary of field-level changes for alerts
+                                        s = "";
+                                        foreach(UpdateResult r in updates)
+                                        {
+                                            s = s + r.FieldName + ": '" + r.OldValue + "' to '" + r.NewValue + "'\n";
+                                        }
+
+                                        AddAlert(sSKU, "Item data updated:\n" + s, AlertItem.AlertTypeEnum.Update, AlertItem.AlertSeverityEnum.Information, false);
+                                    }
                                 }
-
-                                //alerts.Add("UPDATE\t" + sSKU);
 
                                 // Finally, let's do our qty comparisons and build alerts
                                 using (OleDbCommand cmdQOH = cnAcc.CreateCommand())
@@ -348,7 +367,7 @@ namespace MacolaSynch
 
                                         //q1 = SafeToDouble(rdr["qty_on_hand"].ToString()) + SafeToDouble(rdr["qty_allocated"].ToString());
                                         q2 = SafeToDouble(rdrQOH["QOH"].ToString());
-                                        diff = Math.Abs(q1 - q2);
+                                        diff = Math.Abs(Math.Round(q1, 5) - Math.Round(q2, 5));
 
                                         // If Macola qty contains a decimal, we'll allow some variance before alerting
                                         if (q1 % 1 > 0)
@@ -409,7 +428,78 @@ namespace MacolaSynch
             }
         }
 
-        private void AddAlert(string ItemNo, string Description, AlertItem.AlertTypeEnum AlertType, AlertItem.AlertSeverityEnum Severity, bool ActionNeeded, Nullable<double> MacolaQOH = null, Nullable<double> AccessQOH = null)
+        private List<UpdateResult> GetRowUpdates(SqlDataReader MacolaRow, OleDbDataReader AccessRow)
+        {
+            List<UpdateResult> results = new List<UpdateResult>();
+
+            string s;
+            string s1;
+            string s2;
+            decimal d1;
+            decimal d2;
+            bool b;
+
+            s = MacolaRow["item_desc_1"].ToString().Trim();
+
+            if (AccessRow["Desc"].ToString() != s)
+            {
+                results.Add(new UpdateResult("Description", AccessRow["Desc"].ToString(), s));
+            }
+
+            s1 = AccessRow["Cat"].ToString();
+            s2 = MacolaRow["prod_cat"].ToString();
+            if (s1 != s2)
+            {
+                results.Add(new UpdateResult("Product Category", s1, s2));
+            }
+
+            s1 = AccessRow["UOM"].ToString();
+            s2 = MacolaRow["uom"].ToString();
+            if (s1 != s2)
+            {
+                results.Add(new UpdateResult("UOM", s1, s2));
+            }
+
+            s1 = AccessRow["Wt_UOM"].ToString();
+            s2 = MacolaRow["item_weight_uom"].ToString();
+            if (s1 != s2)
+            {
+                results.Add(new UpdateResult("Weight UOM", s1, s2));
+            }
+
+            d1 = SafeToDouble(AccessRow["Wt"].ToString());
+            d2 = SafeToDouble(MacolaRow["item_weight"].ToString());
+            if (d1 != d2)
+            {
+                results.Add(new UpdateResult("Weight", d1.ToString(), d2.ToString()));
+            }
+
+            d1 = SafeToDouble(AccessRow["CH"].ToString());
+            d2 = SafeToDouble(MacolaRow["cube_height"].ToString());
+            if (d1 != d2)
+            {
+                results.Add(new UpdateResult("Cube Height", d1.ToString(), d2.ToString()));
+            }
+
+            d1 = SafeToDouble(AccessRow["CW"].ToString());
+            d2 = SafeToDouble(MacolaRow["cube_width"].ToString());
+            if (d1 != d2)
+            {
+                results.Add(new UpdateResult("Cube Width", d1.ToString(), d2.ToString()));
+            }
+
+            d1 = SafeToDouble(AccessRow["CL"].ToString());
+            d2 = SafeToDouble(MacolaRow["cube_length"].ToString());
+            if (d1 != d2)
+            {
+                results.Add(new UpdateResult("Cube Length", d1.ToString(), d2.ToString()));
+            }
+
+            return results;
+
+        }
+
+        private void AddAlert(string ItemNo, string Description, AlertItem.AlertTypeEnum AlertType, AlertItem.AlertSeverityEnum Severity, bool ActionNeeded, Nullable<decimal> MacolaQOH = null, Nullable<decimal> AccessQOH = null)
         {
             m_lAlertItems.Add(new AlertItem(ItemNo, Description, AlertType, Severity, ActionNeeded, MacolaQOH, AccessQOH));
         }
@@ -516,6 +606,31 @@ namespace MacolaSynch
 
                         s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
                         s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description + "</td>";
+                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
+                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
+                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
+                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.MacolaQOH == null ? "-" : a.MacolaQOH.ToString()) + "</td>";
+                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.AccessQOH == null ? "-" : a.AccessQOH.ToString()) + "</td>";
+
+                        s = s + "</tr>";
+                    }
+                }
+
+                // Updates
+                list2 = m_lAlertItems.Where(a => (a.Type == AlertItem.AlertTypeEnum.Update));
+
+                if (list2.Count() > 0)
+                {
+                    s = s + "<tr style=\"background-color: #DDDDDD\">";
+                    s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Update Item(s)</th>";
+                    s = s + "</tr>";
+
+                    foreach (var a in list2)
+                    {
+                        s = s + "<tr>";
+
+                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
+                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description.Replace("\n", "<br/>") + "</td>";
                         s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
                         s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
                         s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
@@ -698,6 +813,32 @@ namespace MacolaSynch
             */
         }
 
+        private string TruncateTo(string value, int digits)
+        {
+            // I give up :(
+            string s = value.ToString();
+            int i = s.IndexOf(".");
+            int places = s.Length - (i + 1);
+
+            if (i > 0)
+            {
+                if (places > 5)
+                {
+                    s = s.Substring(0, i + 6);
+                }
+                else if (places < 5)
+                {
+                    s = s.PadRight(i + 5, '0');
+                }
+            }
+            else
+            {
+                s = s + ".00000";
+            }
+
+            return s;
+        }
+
         // Does SKU have a production within the past week?
         private bool HasRecentProduction(string ItemNo)
         {
@@ -738,8 +879,6 @@ namespace MacolaSynch
             return ret;
 
         }
-
-
 
         // Returns true if specified SKU has a recent sales order in Macola
         // 'Recent' will be ANY production since the start of the previous work day
@@ -783,12 +922,7 @@ namespace MacolaSynch
             return ret;
         }
 
-        private string sqlize(string v)
-        {
-            return v.Replace("'", "''");
-        }
-
-        private double SafeToDouble(string v)
+        private decimal SafeToDouble(string v)
         {
             if (v == "")
             {
@@ -796,7 +930,10 @@ namespace MacolaSynch
             }
             else
             {
-                return Convert.ToDouble(v);
+                //return Convert.ToDouble(v);
+                //decimal d = Convert.ToDouble(v);
+                //decimal d = TruncateTo(v, 5);
+                return Convert.ToDecimal(TruncateTo(v, 5));
             }
         }
 
@@ -805,7 +942,7 @@ namespace MacolaSynch
             bool ret = false;
 
 
-            if ((ItemNo == "QCPANEL") || (ItemNo == "TEST") || (ItemNo == "TEST1") || (ItemNo == "AFFILIATED NOTE"))
+            if ((ItemNo == "QCPANEL") || (ItemNo == "TEST") || (ItemNo == "TEST1") || (ItemNo == "AFFILIATED NOTE") || (ItemNo == "CUSTOMGROOVE"))
             {
                 // Miscellaneous ignorable SKUs
                 ret = true;

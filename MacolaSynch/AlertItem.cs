@@ -13,8 +13,8 @@ namespace MacolaSynch
         private string m_sItemNo;
         private string m_sDescription;
         private bool m_bActionNeeded;
-        private Nullable<double> m_dblMacolaQOH = null;
-        private Nullable<double> m_dblAccessQOH = null;
+        private Nullable<decimal> m_dblMacolaQOH = null;
+        private Nullable<decimal> m_dblAccessQOH = null;
 
         private AlertTypeEnum m_iType;
         private AlertSeverityEnum m_iSeverity;
@@ -29,11 +29,12 @@ namespace MacolaSynch
         public enum AlertTypeEnum
         {
             Add,
+            Update,
             Delete,
             Variance
         }
 
-        public AlertItem(string ItemNo, string Description, AlertTypeEnum AlertType, AlertSeverityEnum Severity, bool ActionNeeded, Nullable<double> MacolaQOH, Nullable<double> AccessQOH)
+        public AlertItem(string ItemNo, string Description, AlertTypeEnum AlertType, AlertSeverityEnum Severity, bool ActionNeeded, Nullable<decimal> MacolaQOH, Nullable<decimal> AccessQOH)
         {
             m_sItemNo = ItemNo;
             m_sDescription = Description;
@@ -68,7 +69,7 @@ namespace MacolaSynch
             }
         }
 
-        public Nullable<double> MacolaQOH
+        public Nullable<decimal> MacolaQOH
         {
             get
             {
@@ -80,7 +81,7 @@ namespace MacolaSynch
             }
         }
 
-        public Nullable<double> AccessQOH
+        public Nullable<decimal> AccessQOH
         {
             get
             {
