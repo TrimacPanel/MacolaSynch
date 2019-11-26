@@ -1,0 +1,14 @@
+                using (StreamWriter sw = File.CreateText(m_sLogPath))
+                {
+                    Console.WriteLine("SKU\tDescription\tAlert Type\tAlert Severity\tAction Needed");
+                    sw.WriteLine("SKU\tDescription\tAlert Type\tAlert Severity\tAction Needed");
+
+                    foreach (AlertItem a in m_lAlertItems)
+                    {
+                        Console.WriteLine(a.ItemNo + "\t" + a.Description + "\t" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type)
+                                + "\t" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "\t" + (a.ActionNeeded ? "Yes" : "No"));
+
+                        sw.WriteLine(a.ItemNo + "\t" + a.Description + "\t" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type)
+                                + "\t" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "\t" + (a.ActionNeeded ? "Yes" : "No"));
+                    }
+                }

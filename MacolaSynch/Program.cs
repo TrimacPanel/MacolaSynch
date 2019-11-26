@@ -14,7 +14,17 @@ namespace MacolaSynch
 
         static void Main(string[] args)
         {
-            Application app = new Application();
+            bool debugMode = false;
+
+            foreach (Object iterator in args)
+            {
+                if (iterator.ToString().Equals("debug")) 
+                {
+                    debugMode = true;
+                }
+            }
+
+            Application app = new Application(debugMode);
         }
         
     }

@@ -14,7 +14,7 @@ namespace MacolaSynch
 {
     class Application
     {
-        private bool m_bDebugMode = true;
+        private bool m_bDebugMode = false;
 
         private string m_sAccessDb;
         private string m_sMacolaConn;
@@ -31,12 +31,13 @@ namespace MacolaSynch
 
         private string m_sLogPath;
 
-        private List<string> alerts = new List<string>();
+        private List<string> errors = new List<string>();
 
         private List<AlertItem> m_lAlertItems = new List<AlertItem>();
 
-        public Application()
+        public Application(bool debugModeFlag)
         {
+            m_bDebugMode = debugModeFlag;
 
             m_sLocationCode = Properties.Settings.Default.locationCode;
             m_sMacolaConn = Properties.Settings.Default.macolaConnection;
@@ -54,30 +55,41 @@ namespace MacolaSynch
             m_sSmtpFromAddress = Properties.Settings.Default.emailFrom;
 
             Console.WriteLine("Beginning synch...");
+            if (m_bDebugMode)
+            {
+                Console.WriteLine("Debug mode has been enabled. Please check error log file for results.");
+                Console.WriteLine("Press any key to contine.");
+                Console.ReadKey();
+            }
 
             DoSynch();
 
-            SendEmailSummary();
-
-            Console.WriteLine("Synch complete - here's a summary:\n\n");
-
+            //Write errors that have accumlated in the Error's list to the log file.
             using (StreamWriter sw = File.CreateText(m_sLogPath))
             {
-                Console.WriteLine("SKU\tDescription\tAlert Type\tAlert Severity\tAction Needed");
-                sw.WriteLine("SKU\tDescription\tAlert Type\tAlert Severity\tAction Needed");
-
-                foreach (AlertItem a in m_lAlertItems)
+                foreach (string iterator in errors)
                 {
-                    Console.WriteLine(a.ItemNo + "\t" + a.Description + "\t" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type)
-                            + "\t" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "\t" + (a.ActionNeeded ? "Yes" : "No"));
-
-                    sw.WriteLine(a.ItemNo + "\t" + a.Description + "\t" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type)
-                            + "\t" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "\t" + (a.ActionNeeded ? "Yes" : "No"));
+                    //TODO Create an error object for correct formatting
+                    sw.WriteLine("");
+                    sw.WriteLine(iterator);
                 }
-            }            
+            }
+
+            //Do not send emails if debug mode is enabled.
+            if (!m_bDebugMode)
+            { 
+                SendEmailSummary();
+            }
+
+            //Send error warning email, only if we have to.
+            if (errors.Count > 0)
+            {
+                //TODO Bandaid till error objects are implmented. 
+                //Divides by 2, to get the correct number of errors.
+                SendEmailError(errors.Count/2);
+            }
 
             Console.WriteLine("\n\nSyncronization complete.");
-
         }
 
         private void DoSynch()
@@ -427,16 +439,7 @@ namespace MacolaSynch
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine("Unexpected error while processing Macola SKU: " + sSKU);
-                            Console.WriteLine(e);
-                            SendEmailError(sSKU);
-
-                            // We'll sloppily cutoff processing after 5 errors to prevent spamming 
-                            errs++;
-                            if (errs > 5)
-                            {
-                                break;
-                            }
+                            AddError(e, sSKU);
                         }
 
                     }
@@ -535,7 +538,15 @@ namespace MacolaSynch
             m_lAlertItems.Add(new AlertItem(ItemNo, Description, AlertType, Severity, ActionNeeded, MacolaQOH, AccessQOH));
         }
 
-        /*private void SendUpdatesSummary()
+        // Instead of emailing off every single error message. Add it to a list.
+        // Once we're done processing the sync, write all the errors to a log file.
+        private void AddError(Exception e, string SKU)
+        {
+            errors.Add(SKU);
+            errors.Add(e.ToString());
+        }
+
+        private void SendEmailError(int ErrorCount)
         {
 
             MailMessage msg = new MailMessage();
@@ -544,357 +555,16 @@ namespace MacolaSynch
             string s;
 
             s = "";
-            s = s + "<p>Macola Synch results for location " + m_sLocationCode + ":</p>\n";
+            s = s + "<p>Errors have occured when running MacolaSyncH. " + ErrorCount + " errors/SKUs are effected.</p>\n";
             s = s + "<br/>";
 
-            s = s + "<table style=\"padding:3px; border: 1px solid black; border-collapse:collapse\">";
-
-            s = s + "<thead style=\"background-color: #15A1A2\">";
-            s = s + "<th style=\"border: 1px solid black;\">SKU</th>";
-            s = s + "<th style=\"border: 1px solid black;\">Description</th>";
-            s = s + "<th style=\"border: 1px solid black;\">Type</th>";
-            s = s + "<th style=\"border: 1px solid black;\">Severity</th>";
-            s = s + "<th style=\"border: 1px solid black;\">Action Needed?</th>";
-            s = s + "<th style=\"border: 1px solid black;\">M-Qty</th>";
-            s = s + "<th style=\"border: 1px solid black;\">A-Qty</th>";
-            s = s + "</thead>";
-
-            IEnumerable<AlertItem> list;
-
-            // Informational alerts section
-            list = m_lAlertItems.Where(a => (a.Severity == AlertItem.AlertSeverityEnum.Information));
-
-            if (list.Count() > 0)
-            {
-                s = s + "<tr style=\"background-color: #FFFF66\">";
-                s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Information Alerts (No Attention Required)</th>";
-                s = s + "</tr>";
-
-                IEnumerable<AlertItem> list2;
-
-                // Adds
-                list2 = m_lAlertItems.Where(a => (a.Type == AlertItem.AlertTypeEnum.Add));
-
-                if (list2.Count() > 0)
-                {
-                    s = s + "<tr style=\"background-color: #DDDDDD\">";
-                    s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">New Item(s) Added</th>";
-                    s = s + "</tr>";
-
-                    foreach (var a in list2)
-                    {
-                        s = s + "<tr>";
-
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.MacolaQOH == null ? "-" : a.MacolaQOH.ToString()) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.AccessQOH == null ? "-" : a.AccessQOH.ToString()) + "</td>";
-
-                        s = s + "</tr>";
-                    }
-                }
-
-                // Updates
-                list2 = m_lAlertItems.Where(a => (a.Type == AlertItem.AlertTypeEnum.Update));
-
-                if (list2.Count() > 0)
-                {
-                    s = s + "<tr style=\"background-color: #DDDDDD\">";
-                    s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Update Item(s)</th>";
-                    s = s + "</tr>";
-
-                    foreach (var a in list2)
-                    {
-                        s = s + "<tr>";
-
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description.Replace("\n", "<br/>") + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.MacolaQOH == null ? "-" : a.MacolaQOH.ToString()) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.AccessQOH == null ? "-" : a.AccessQOH.ToString()) + "</td>";
-
-                        s = s + "</tr>";
-                    }
-                }
-
-                // Deletes
-                list2 = m_lAlertItems.Where(a => (a.Type == AlertItem.AlertTypeEnum.Delete));
-
-                if (list2.Count() > 0)
-                {
-                    s = s + "<tr style=\"background-color: #DDDDDD\">";
-                    s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Obsolete Item(s) Deleted</th>";
-                    s = s + "</tr>";
-
-                    foreach (var a in list2)
-                    {
-                        s = s + "<tr>";
-
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.MacolaQOH == null ? "-" : a.MacolaQOH.ToString()) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.AccessQOH == null ? "-" : a.AccessQOH.ToString()) + "</td>";
-
-                        s = s + "</tr>";
-                    }
-                }                
-            }
-
-            s = s + "</table>";
-
-            msg.From = new MailAddress(m_sSmtpFromAddress);
-            msg.To.Add(m_sSmtpUpdatesToAddress);
-
-            msg.Subject = "Macola Sync Results - " + m_sLocationCode;
-            msg.IsBodyHtml = true;
-            msg.Body = s;
-
-            SmtpClient smtp = new SmtpClient();
-            smtp.Host = m_sSmtpHost;
-            smtp.Port = m_iSmtpPort;
-            smtp.EnableSsl = true;
-            //smtp.Credentials = new NetworkCredential(m_sSmtpUsername, m_sSmtpPassword);
-
-            smtp.Send(msg);
-
-        }*/
-
-
-        /*private void SendAlertsSummary()
-        {
-
-            MailMessage msg = new MailMessage();
-
-
-            string s;
-
-            s = "";
-            s = s + "<p>Macola Synch alerts for location " + m_sLocationCode + ":</p>\n";
-            s = s + "<br/>";
-
-            s = s + "<table style=\"padding:3px; border: 1px solid black; border-collapse:collapse\">";
-
-            s = s + "<thead style=\"background-color: #15A1A2\">";
-            s = s + "<th style=\"border: 1px solid black;\">SKU</th>";
-            s = s + "<th style=\"border: 1px solid black;\">Description</th>";
-            s = s + "<th style=\"border: 1px solid black;\">Type</th>";
-            s = s + "<th style=\"border: 1px solid black;\">Severity</th>";
-            s = s + "<th style=\"border: 1px solid black;\">Action Needed?</th>";
-            s = s + "<th style=\"border: 1px solid black;\">M-Qty</th>";
-            s = s + "<th style=\"border: 1px solid black;\">A-Qty</th>";
-            s = s + "</thead>";
-
-            IEnumerable<AlertItem> list;
-
-            // Severe alerts section
-            list = m_lAlertItems.Where(a => (a.Severity == AlertItem.AlertSeverityEnum.Severe));
-
-            if (list.Count() > 0)
-            {
-                s = s + "<tr style=\"background-color: #FFAAAA\">";
-                s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Severe Alerts (Attention Required)</th>";
-                s = s + "</tr>";
-
-                foreach (var a in list)
-                {
-                    s = s + "<tr>";
-
-                    s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.MacolaQOH == null ? "-" : a.MacolaQOH.ToString()) + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.AccessQOH == null ? "-" : a.AccessQOH.ToString()) + "</td>";
-
-                    s = s + "</tr>";
-                }
-            }
-
-            // Warning alerts section
-            list = m_lAlertItems.Where(a => (a.Severity == AlertItem.AlertSeverityEnum.Moderate));
-
-            if (list.Count() > 0)
-            {
-                s = s + "<tr style=\"background-color: #FFA500\">";
-                s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Moderate Alerts (No Attention Required Yet)</th>";
-                s = s + "</tr>";
-
-                foreach (var a in list)
-                {
-                    s = s + "<tr>";
-
-                    s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.MacolaQOH == null ? "-" : a.MacolaQOH.ToString()) + "</td>";
-                    s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.AccessQOH == null ? "-" : a.AccessQOH.ToString()) + "</td>";
-
-                    s = s + "</tr>";
-                }
-            }
-
-            // Informational alerts section
-            list = m_lAlertItems.Where(a => (a.Severity == AlertItem.AlertSeverityEnum.Information));
-
-            if (list.Count() > 0)
-            {
-                s = s + "<tr style=\"background-color: #FFFF66\">";
-                s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Information Alerts (No Attention Required)</th>";
-                s = s + "</tr>";
-
-                IEnumerable<AlertItem> list2;
-
-                // Adds
-                list2 = m_lAlertItems.Where(a => (a.Type == AlertItem.AlertTypeEnum.Add));
-
-                if (list2.Count() > 0)
-                {
-                    s = s + "<tr style=\"background-color: #DDDDDD\">";
-                    s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">New Item(s) Added</th>";
-                    s = s + "</tr>";
-
-                    foreach (var a in list2)
-                    {
-                        s = s + "<tr>";
-
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.MacolaQOH == null ? "-" : a.MacolaQOH.ToString()) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.AccessQOH == null ? "-" : a.AccessQOH.ToString()) + "</td>";
-
-                        s = s + "</tr>";
-                    }
-                }
-
-                // Updates
-                list2 = m_lAlertItems.Where(a => (a.Type == AlertItem.AlertTypeEnum.Update));
-
-                if (list2.Count() > 0)
-                {
-                    s = s + "<tr style=\"background-color: #DDDDDD\">";
-                    s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Update Item(s)</th>";
-                    s = s + "</tr>";
-
-                    foreach (var a in list2)
-                    {
-                        s = s + "<tr>";
-
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description.Replace("\n", "<br/>") + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.MacolaQOH == null ? "-" : a.MacolaQOH.ToString()) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.AccessQOH == null ? "-" : a.AccessQOH.ToString()) + "</td>";
-
-                        s = s + "</tr>";
-                    }
-                }
-
-                // Deletes
-                list2 = m_lAlertItems.Where(a => (a.Type == AlertItem.AlertTypeEnum.Delete));
-
-                if (list2.Count() > 0)
-                {
-                    s = s + "<tr style=\"background-color: #DDDDDD\">";
-                    s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Obsolete Item(s) Deleted</th>";
-                    s = s + "</tr>";
-
-                    foreach (var a in list2)
-                    {
-                        s = s + "<tr>";
-
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.MacolaQOH == null ? "-" : a.MacolaQOH.ToString()) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.AccessQOH == null ? "-" : a.AccessQOH.ToString()) + "</td>";
-
-                        s = s + "</tr>";
-                    }
-                }
-
-                // All others
-                list2 = m_lAlertItems.Where(a => (a.Type == AlertItem.AlertTypeEnum.Variance));
-                list2 = list2.Where(a => (a.Severity == AlertItem.AlertSeverityEnum.Information));
-
-                if (list2.Count() > 0)
-                {
-                    s = s + "<tr style=\"background-color: #DDDDDD\">";
-                    s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Other</th>";
-                    s = s + "</tr>";
-
-                    foreach (var a in list2)
-                    {
-                        s = s + "<tr>";
-
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.ItemNo + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: left;\">" + a.Description + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertTypeEnum), a.Type) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + Enum.GetName(typeof(AlertItem.AlertSeverityEnum), a.Severity) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.ActionNeeded ? "Yes" : "No") + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.MacolaQOH == null ? "-" : a.MacolaQOH.ToString()) + "</td>";
-                        s = s + "<td style=\"border: 1px solid black; text-align: center;\">" + (a.AccessQOH == null ? "-" : a.AccessQOH.ToString()) + "</td>";
-
-                        s = s + "</tr>";
-                    }
-                }
-            }
-
-            s = s + "</table>";
-
-            msg.From = new MailAddress(m_sSmtpFromAddress);
-            msg.To.Add(m_sSmtpUpdatesToAddress);
-
-            msg.Subject = "Macola Sync Results - " + m_sLocationCode;
-            msg.IsBodyHtml = true;
-            msg.Body = s;
-
-            SmtpClient smtp = new SmtpClient();
-            smtp.Host = m_sSmtpHost;
-            smtp.Port = m_iSmtpPort;
-            smtp.EnableSsl = true;
-            smtp.Credentials = new NetworkCredential(m_sSmtpUsername, m_sSmtpPassword);
-
-            smtp.Send(msg);
-
-        }*/
-
-        private void SendEmailError(string SKU)
-        {
-
-            MailMessage msg = new MailMessage();
-
-
-            string s;
-
-            s = "";
-            s = s + "<p>An unexpected error occurred while processing '" + SKU + "'  for location '" + m_sLocationCode + "'.</p>\n";
-            s = s + "<br/>";
-
-            s = s + "<p>This is most likely the result of Macola data being too large for the destination field in Access.  Please have IT investigate if needed.</p>\n";
+            s = s + "<p>Check the log file located on the computer that triggers the MacolaSyncH.</p>\n";
             s = s + "<br/>";
             
             msg.From = new MailAddress(m_sSmtpFromAddress);
             msg.To.Add(m_sSmtpAlertsToAddress);
 
-            msg.Subject = "Macola Sync Error - " + SKU + " at " + m_sLocationCode;
+            msg.Subject = "Macola Sync Errors Have Occured At " + m_sLocationCode;
             msg.IsBodyHtml = true;
             msg.Body = s;
 
