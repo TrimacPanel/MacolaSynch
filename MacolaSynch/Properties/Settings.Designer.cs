@@ -12,7 +12,7 @@ namespace MacolaSynch.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "15.1.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "16.3.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -25,7 +25,7 @@ namespace MacolaSynch.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("c:\\MacolaSynch\\DATA FILE.mdb")]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\ppi-nas-1.ppi.trimacpanel\\PPI-Enterprise\\Inventory\\DATA FILE.mdb")]
         public string accessFilePath {
             get {
                 return ((string)(this["accessFilePath"]));
@@ -34,10 +34,10 @@ namespace MacolaSynch.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("tcoyle@trimacpanel.com")]
-        public string emailSummaryTo {
+        [global::System.Configuration.DefaultSettingValueAttribute("mbauer@trimacpanel.com")]
+        public string emailAlertsTo {
             get {
-                return ((string)(this["emailSummaryTo"]));
+                return ((string)(this["emailAlertsTo"]));
             }
         }
         
@@ -52,7 +52,7 @@ namespace MacolaSynch.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("in-v3.mailjet.com")]
+        [global::System.Configuration.DefaultSettingValueAttribute("trimacpanel-com.mail.protection.outlook.com")]
         public string emailHostname {
             get {
                 return ((string)(this["emailHostname"]));
@@ -70,7 +70,7 @@ namespace MacolaSynch.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("bc56965912839358636c1e249521c21f")]
+        [global::System.Configuration.DefaultSettingValueAttribute("20ca13e88a5bac31bb61b5af132fee10")]
         public string emailPassword {
             get {
                 return ((string)(this["emailPassword"]));
@@ -79,7 +79,7 @@ namespace MacolaSynch.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("587")]
+        [global::System.Configuration.DefaultSettingValueAttribute("25")]
         public int emailPort {
             get {
                 return ((int)(this["emailPort"]));
@@ -88,7 +88,7 @@ namespace MacolaSynch.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("TMV")]
+        [global::System.Configuration.DefaultSettingValueAttribute("PPI")]
         public string locationCode {
             get {
                 return ((string)(this["locationCode"]));
@@ -106,13 +106,25 @@ namespace MacolaSynch.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("server=macola;database=DATA_01;user id=sa;password=trimac2k")]
+        [global::System.Configuration.DefaultSettingValueAttribute("server=macola;database=DATA_01;Trusted_Connection=True;")]
         public string macolaConnection {
             get {
                 return ((string)(this["macolaConnection"]));
             }
             set {
                 this["macolaConnection"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("tcoyle@trimacpanel.com")]
+        public string emailUpdatesTo {
+            get {
+                return ((string)(this["emailUpdatesTo"]));
+            }
+            set {
+                this["emailUpdatesTo"] = value;
             }
         }
     }
