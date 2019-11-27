@@ -77,7 +77,7 @@ namespace MacolaSynch
 
             //Do not send emails if debug mode is enabled.
             if (!m_bDebugMode)
-            { 
+            {
                 SendEmailSummary();
             }
 
@@ -86,7 +86,7 @@ namespace MacolaSynch
             {
                 //TODO Bandaid till error objects are implmented. 
                 //Divides by 2, to get the correct number of errors.
-                SendEmailError(errors.Count/2);
+                SendEmailError(errors.Count / 2);
             }
 
             Console.WriteLine("\n\nSyncronization complete.");
@@ -101,7 +101,6 @@ namespace MacolaSynch
             decimal diff;
             bool bSafeToDelete;
             string s;
-            int errs = 0;
 
             using (OleDbConnection cnAcc = new OleDbConnection(m_sAccessConn))
             {
@@ -118,7 +117,8 @@ namespace MacolaSynch
                     sql = "select idx.item_no, idx.item_desc_1, idx.item_desc_2, idx.prod_cat, idx.uom, idx.item_weight_uom, idx.item_weight, idx.user_def_cd, idx.activity_cd, " +
                           "idx.cube_height_uom, idx.cube_width_uom, idx.cube_length_uom, idx.cube_height, idx.cube_width, idx.cube_length, loc.qty_on_hand, loc.qty_allocated, loc.qty_bkord " +
                           "from imitmidx_sql idx " +
-                          "inner join iminvloc_sql loc on idx.item_no = loc.item_no ";
+                          "inner join iminvloc_sql loc on idx.item_no = loc.item_no " +
+                          "where loc.loc = @LocationCode";
 
                     SqlCommand cmd = new SqlCommand(sql, cnSql);
 
@@ -340,18 +340,18 @@ namespace MacolaSynch
 
                                             cmdUpdate.Parameters.AddRange(new OleDbParameter[]
                                             {
-                                        new OleDbParameter("@Description", s),
-                                        new OleDbParameter("@Category", rdr["prod_cat"].ToString()),
-                                        new OleDbParameter("@UOM", rdr["uom"].ToString()),
-                                        new OleDbParameter("@WeightUOM", rdr["item_weight_uom"].ToString()),
-                                        // new OleDbParameter("@Weight", SafeToDouble(rdr["item_weight"].ToString())),
-                                        new OleDbParameter("@UserCode", rdr["user_def_cd"].ToString().Trim()),
-                                        new OleDbParameter("@CHUOM", rdr["cube_height_uom"].ToString()),
-                                        new OleDbParameter("@CWUOM", rdr["cube_width_uom"].ToString()),
-                                        new OleDbParameter("@CLUOM", rdr["cube_length_uom"].ToString()),
-                                        new OleDbParameter("@CH", SafeToDouble(rdr["cube_height"].ToString())),
-                                        new OleDbParameter("@CW", SafeToDouble(rdr["cube_width"].ToString())),
-                                        new OleDbParameter("@CL", SafeToDouble(rdr["cube_length"].ToString()))
+                                                new OleDbParameter("@Description", s),
+                                                new OleDbParameter("@Category", rdr["prod_cat"].ToString()),
+                                                new OleDbParameter("@UOM", rdr["uom"].ToString()),
+                                                new OleDbParameter("@WeightUOM", rdr["item_weight_uom"].ToString()),
+                                                // new OleDbParameter("@Weight", SafeToDouble(rdr["item_weight"].ToString())),
+                                                new OleDbParameter("@UserCode", rdr["user_def_cd"].ToString().Trim()),
+                                                new OleDbParameter("@CHUOM", rdr["cube_height_uom"].ToString()),
+                                                new OleDbParameter("@CWUOM", rdr["cube_width_uom"].ToString()),
+                                                new OleDbParameter("@CLUOM", rdr["cube_length_uom"].ToString()),
+                                                new OleDbParameter("@CH", SafeToDouble(rdr["cube_height"].ToString())),
+                                                new OleDbParameter("@CW", SafeToDouble(rdr["cube_width"].ToString())),
+                                                new OleDbParameter("@CL", SafeToDouble(rdr["cube_length"].ToString()))
                                             });
 
                                             cmdUpdate.ExecuteNonQuery();
@@ -446,11 +446,10 @@ namespace MacolaSynch
 
                     rdr.Close();
 
-                    Console.WriteLine("Synch completed.");
                 }
 
                 cnAcc.Close();
-                
+
             }
         }
 
@@ -560,7 +559,7 @@ namespace MacolaSynch
 
             s = s + "<p>Check the log file located on the computer that triggers the MacolaSyncH.</p>\n";
             s = s + "<br/>";
-            
+
             msg.From = new MailAddress(m_sSmtpFromAddress);
             msg.To.Add(m_sSmtpAlertsToAddress);
 
@@ -581,7 +580,7 @@ namespace MacolaSynch
 
         private void SendEmailSummary()
         {
-            
+
             MailMessage msg = new MailMessage();
 
 
@@ -634,7 +633,7 @@ namespace MacolaSynch
             list = m_lAlertItems.Where(a => (a.Severity == AlertItem.AlertSeverityEnum.Moderate));
 
             if (list.Count() > 0)
-            { 
+            {
                 s = s + "<tr style=\"background-color: #FFA500\">";
                 s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Moderate Alerts (No Attention Required Yet)</th>";
                 s = s + "</tr>";
@@ -659,7 +658,7 @@ namespace MacolaSynch
             list = m_lAlertItems.Where(a => (a.Severity == AlertItem.AlertSeverityEnum.Information));
 
             if (list.Count() > 0)
-            { 
+            {
                 s = s + "<tr style=\"background-color: #FFFF66\">";
                 s = s + "<th colspan=\"7\" style=\"border: 1px solid black;\">Information Alerts (No Attention Required)</th>";
                 s = s + "</tr>";
@@ -668,7 +667,7 @@ namespace MacolaSynch
 
                 // Adds
                 list2 = m_lAlertItems.Where(a => (a.Type == AlertItem.AlertTypeEnum.Add));
-                
+
                 if (list2.Count() > 0)
                 {
                     s = s + "<tr style=\"background-color: #DDDDDD\">";
@@ -842,7 +841,7 @@ namespace MacolaSynch
             }
 
 
-            sql = "select count(*) from iminvtrx_sql where source = 'P' and item_no in (" + skus  + ") and promise_dt >= DATEADD(day, -1, GETDATE())";
+            sql = "select count(*) from iminvtrx_sql where source = 'P' and item_no in (" + skus + ") and promise_dt >= DATEADD(day, -1, GETDATE())";
             bool ret = false;
 
             DateTime cutoff = DateTime.Now;
@@ -908,7 +907,7 @@ namespace MacolaSynch
         // Does SKU have a production within the past week?
         private bool HasRecentProduction(string ItemNo)
         {
-            
+
             // Fetch primary sku along with any parent skus this item is a member of
             string sql = "select item_no from imitmidx_sql where item_no = @ItemNo or item_note_1 = @ItemNo  or item_note_2 = @ItemNo or item_note_3 = @ItemNo or item_note_4 = @ItemNo";
 
@@ -926,7 +925,7 @@ namespace MacolaSynch
 
                 while (rdr.Read())
                 {
-                    skus = skus + "'" +  rdr.GetString(0).Trim() + "', ";
+                    skus = skus + "'" + rdr.GetString(0).Trim() + "', ";
                 }
 
                 if (skus.Length > 0)
